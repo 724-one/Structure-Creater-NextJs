@@ -1,0 +1,25 @@
+import React from "react";
+import { TextInput, View, Text } from "react-native";
+
+export default function GlobalTextInput({ value, onChangeText, placeholder, error, secureTextEntry }) {
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor="#9AA0A6"
+        secureTextEntry={secureTextEntry}
+        style={{
+          backgroundColor: "#1F2430",
+          color: "white",
+          borderRadius: 12,
+          padding: 14,
+          borderWidth: 1,
+          borderColor: error ? "#EF4444" : "transparent"
+        }}
+      />
+      {!!error && <Text style={{ color: "#EF4444", marginTop: 6 }}>{error}</Text>}
+    </View>
+  );
+}

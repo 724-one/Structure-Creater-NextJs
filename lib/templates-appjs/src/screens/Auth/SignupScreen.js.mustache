@@ -1,0 +1,25 @@
+import React from "react";
+import { View, Text } from "react-native";
+import { Formik } from "formik";
+import GlobalTextInput from "../../components/GlobalTextInput";
+import GlobalButton from "../../components/GlobalButton";
+import { signupSchema } from "../../utils/validators";
+
+export default function SignupScreen({ navigation }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: "#0F1420", padding: 20, justifyContent: "center" }}>
+      <Text style={{ fontSize: 24, color: "white", fontWeight: "700", marginBottom: 20 }}>Sign up</Text>
+      <Formik initialValues={{ name: "", email: "", password: "", confirmPassword: "" }} validationSchema={signupSchema} onSubmit={() => navigation.goBack()}>
+        {({ handleChange, handleSubmit, values, errors, touched }) => (
+          <>
+            <GlobalTextInput value={values.name} onChangeText={handleChange("name")} placeholder="Full name" error={touched.name && errors.name} />
+            <GlobalTextInput value={values.email} onChangeText={handleChange("email")} placeholder="Email" error={touched.email && errors.email} />
+            <GlobalTextInput value={values.password} onChangeText={handleChange("password")} placeholder="Password" secureTextEntry error={touched.password && errors.password} />
+            <GlobalTextInput value={values.confirmPassword} onChangeText={handleChange("confirmPassword")} placeholder="Confirm password" secureTextEntry error={touched.confirmPassword && errors.confirmPassword} />
+            <GlobalButton label="Create account" onPress={handleSubmit} />
+          </>
+        )}
+      </Formik>
+    </View>
+  );
+}

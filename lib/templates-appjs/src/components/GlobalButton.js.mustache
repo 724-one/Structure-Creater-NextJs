@@ -1,0 +1,14 @@
+import React from "react";
+import { TouchableOpacity, Text, ActivityIndicator } from "react-native";
+
+export default function GlobalButton({ label, onPress, loading, style }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[{ backgroundColor: "#6C5CE7", padding: 14, borderRadius: 12, alignItems: "center" }, style]}
+      disabled={loading}
+    >
+      {loading ? <ActivityIndicator /> : <Text style={{ color: "white", fontWeight: "600" }}>{label}</Text>}
+    </TouchableOpacity>
+  );
+}

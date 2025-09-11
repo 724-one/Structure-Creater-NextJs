@@ -1,0 +1,25 @@
+{
+  "name": "{{appName}}",
+  "private": true,
+  "version": "1.0.0",
+  "main": "App.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
+  },
+  "dependencies": {
+    "expo": {{#useLatest}}"*"
+             {{/useLatest}}{{^useLatest}}"~{{expoSdk}}"{{/useLatest}},
+    "react": "18.2.0",
+    "react-native": {{#useLatest}}"*"
+                     {{/useLatest}}{{^useLatest}}"{{rnVersion}}"{{/useLatest}},
+    "@react-navigation/native": "*",
+    "@react-navigation/native-stack": "*",
+    "react-native-gesture-handler": "*",
+    "react-native-safe-area-context": "*",
+    "react-native-screens": "*",
+    "formik": "*",
+    "yup": "*"
+  }
+}
