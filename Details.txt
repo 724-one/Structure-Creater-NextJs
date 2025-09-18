@@ -1,0 +1,2 @@
+This is a 2nd varient where we can customise the app name, and add signup textinputs with login.
+This is 5% of what i want as a final product

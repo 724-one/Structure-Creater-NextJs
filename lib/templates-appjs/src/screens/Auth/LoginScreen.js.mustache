@@ -1,24 +1,21 @@
+{{=<% %>=}}
 import React from "react";
-import { View, Text } from "react-native";
-import { Formik } from "formik";
+import { View, Text, StyleSheet } from "react-native";
 import GlobalTextInput from "../../components/GlobalTextInput";
 import GlobalButton from "../../components/GlobalButton";
-import { loginSchema } from "../../utils/validators";
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen() {
   return (
-    <View style={{ flex: 1, backgroundColor: "#0F1420", padding: 20, justifyContent: "center" }}>
-      <Text style={{ fontSize: 24, color: "white", fontWeight: "700", marginBottom: 20 }}>Login</Text>
-      <Formik initialValues={{ email: "", password: "" }} validationSchema={loginSchema} onSubmit={() => {}}>
-        {({ handleChange, handleSubmit, values, errors, touched }) => (
-          <>
-            <GlobalTextInput value={values.email} onChangeText={handleChange("email")} placeholder="Email" error={touched.email && errors.email} />
-            <GlobalTextInput value={values.password} onChangeText={handleChange("password")} placeholder="Password" secureTextEntry error={touched.password && errors.password} />
-            {{#features.signup}}<Text onPress={() => navigation.navigate("Signup")} style={{ color: "#A5B4FC", marginBottom: 12 }}>Go to Sign up</Text>{{/features.signup}}
-            <GlobalButton label="Login" onPress={handleSubmit} />
-          </>
-        )}
-      </Formik>
+    <View style={styles.container}>
+      <Text style={styles.title}>Login</Text>
+      <GlobalTextInput placeholder="Email" />
+      <GlobalTextInput placeholder="Password" secureTextEntry />
+      <GlobalButton title="Login" onPress={() => {}} />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, justifyContent: "center", padding: 20 },
+  title: { fontSize: 24, marginBottom: 20, textAlign: "center" },
+});

@@ -1,0 +1,30 @@
+import React from "react";
+import { View, Text } from "react-native";
+import { Formik } from "formik";
+import GlobalTextInput from "../../components/GlobalTextInput";
+import GlobalButton from "../../components/GlobalButton";
+import { signupSchema } from "../../utils/validators";
+
+export default function SignupScreen({ navigation }){
+  const features = {{&featuresJson}};
+  const init = { firstName:"", lastName:"", email:"", phone:"", dob:"", password:"", confirmPassword:"" };
+  return (
+    <View style={{ flex:1, backgroundColor:"#0F1420", padding:20, justifyContent:"center" }}>
+      <Text style={{ fontSize:24, color:"white", fontWeight:"700", marginBottom:20 }}>{{role.displayName}} Sign up</Text>
+      <Formik initialValues={init} validationSchema={signupSchema(features)} onSubmit={() => navigation.goBack()}>
+        {({ handleChange, handleSubmit, values, errors, touched }) => (
+          <>
+            {{#features.signupFields.firstName}}<GlobalTextInput value={values.firstName} onChangeText={handleChange("firstName")} placeholder="First name" error={touched.firstName && errors.firstName} />{{/features.signupFields.firstName}}
+            {{#features.signupFields.lastName}} <GlobalTextInput value={values.lastName}  onChangeText={handleChange("lastName")}  placeholder="Last name"  error={touched.lastName && errors.lastName} />{{/features.signupFields.lastName}}
+            {{#features.signupFields.email}}    <GlobalTextInput value={values.email}     onChangeText={handleChange("email")}     placeholder="Email"      error={touched.email && errors.email} />{{/features.signupFields.email}}
+            {{#features.signupFields.phone}}    <GlobalTextInput value={values.phone}     onChangeText={handleChange("phone")}     placeholder="Phone"      keyboardType="phone-pad" error={touched.phone && errors.phone} />{{/features.signupFields.phone}}
+            {{#features.signupFields.dob}}      <GlobalTextInput value={values.dob}       onChangeText={handleChange("dob")}       placeholder="Date of birth (YYYY-MM-DD)" error={touched.dob && errors.dob} />{{/features.signupFields.dob}}
+            {{#features.signupFields.password}} <GlobalTextInput value={values.password}  onChangeText={handleChange("password")}  placeholder="Password"   secureTextEntry error={touched.password && errors.password} />{{/features.signupFields.password}}
+            {{#features.signupFields.confirmPassword}}<GlobalTextInput value={values.confirmPassword} onChangeText={handleChange("confirmPassword")} placeholder="Confirm password" secureTextEntry error={touched.confirmPassword && errors.confirmPassword} />{{/features.signupFields.confirmPassword}}
+            <GlobalButton label="Create account" onPress={handleSubmit}/>
+          </>
+        )}
+      </Formik>
+    </View>
+  );
+}

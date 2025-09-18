@@ -1,0 +1,46 @@
+import React from "react";
+import { View, Text, TouchableOpacity } from "react-native";
+import { Formik } from "formik";
+import GlobalTextInput from "../../components/GlobalTextInput";
+import GlobalButton from "../../components/GlobalButton";
+import { loginSchema } from "../../utils/validators";
+
+export default function LoginScreen({ navigation }){
+  const features = {{&featuresJson}};
+  return (
+    <View style={{ flex:1, backgroundColor:"#0F1420", padding:20, justifyContent:"center" }}>
+      <Text style={{ fontSize:24, color:"white", fontWeight:"700", marginBottom:20 }}>{{role.displayName}} Login</Text>
+      <Formik initialValues={{ email:"", password:"", phone:"" }} validationSchema={loginSchema(features)} onSubmit={() => {}}>
+        {({ handleChange, handleSubmit, values, errors, touched }) => (
+          <>
+            {{#features.phoneOnly}}
+              <GlobalTextInput value={values.phone} onChangeText={handleChange("phone")} placeholder="Phone number" keyboardType="phone-pad" error={touched.phone && errors.phone} />
+            {{/features.phoneOnly}}
+            {{^features.phoneOnly}}
+              <GlobalTextInput value={values.email} onChangeText={handleChange("email")} placeholder="Email" error={touched.email && errors.email} />
+              <GlobalTextInput value={values.password} onChangeText={handleChange("password")} placeholder="Password" secureTextEntry error={touched.password && errors.password} />
+            {{/features.phoneOnly}}
+
+            {{#features.enableSignup}}
+              <Text onPress={() => navigation.navigate("{{role.safeName}}Signup")} style={{ color:"#A5B4FC", marginBottom:12 }}>
+                Go to Sign up
+              </Text>
+            {{/features.enableSignup}}
+
+            <GlobalButton label="Login" onPress={handleSubmit} />
+
+            {{#features.socialLogins}}
+              <View style={{ height:12 }}/>
+              <TouchableOpacity style={{ backgroundColor:"#FFFFFF", padding:12, borderRadius:10, marginBottom:8, alignItems:"center" }}>
+                <Text style={{ color:"#111827", fontWeight:"600" }}>Continue with Google</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{ backgroundColor:"#000000", padding:12, borderRadius:10, alignItems:"center" }}>
+                <Text style={{ color:"#FFFFFF", fontWeight:"600" }}>Continue with Apple</Text>
+              </TouchableOpacity>
+            {{/features.socialLogins}}
+          </>
+        )}
+      </Formik>
+    </View>
+  );
+}
