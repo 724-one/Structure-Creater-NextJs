@@ -1,0 +1,31 @@
+{{=<% %>=}}
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+<%^hasBottomTabs%>import HomeScreen from "../screens/Home/HomeScreen";<%/hasBottomTabs%>
+<%#hasBottomTabs%>import BottomTabs from "./BottomTabs";<%/hasBottomTabs%>
+import LoginScreen from "../screens/Auth/LoginScreen";
+import SignupScreen from "../screens/Auth/SignupScreen";
+import ProfileScreen from "../screens/Profile/ProfileScreen";
+import SettingsScreen from "../screens/Settings/SettingsScreen";
+
+const Stack = createNativeStackNavigator();
+
+export default function RootNavigator() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="<%initialRoute%>">
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Signup" component={SignupScreen} />
+        <%#hasBottomTabs%>
+          <Stack.Screen name="Main" component={BottomTabs} />
+        <%/hasBottomTabs%>
+        <%^hasBottomTabs%>
+          <Stack.Screen name="Home" component={HomeScreen} />
+        <%/hasBottomTabs%>
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}

@@ -1,0 +1,60 @@
+import React from 'react';
+import { View, Text, FlatList } from 'react-native';
+import GlobalButton from '../components/GlobalButton';
+
+export default function Home() {
+  const sampleActivities = [
+    { id: '1', text: 'Signed in' },
+    { id: '2', text: 'Viewed dashboard' },
+    { id: '3', text: 'Updated profile' },
+  ];
+
+  return (
+    <View style={{ flex: 1, padding: 20, gap: 16 }}>
+      {{#features.home.welcomeHeader}}
+      <Text style={{ fontSize: 24, fontWeight: '700' }}>Welcome back!</Text>
+      {{/features.home.welcomeHeader}}
+
+      {{#features.home.metricCards}}
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View style={{ flex: 1, backgroundColor: '#f1f1f1', padding: 16, borderRadius: 12 }}>
+          <Text style={{ fontWeight: '600' }}>Revenue</Text>
+          <Text>$12,340</Text>
+        </View>
+        <View style={{ flex: 1, backgroundColor: '#f1f1f1', padding: 16, borderRadius: 12 }}>
+          <Text style={{ fontWeight: '600' }}>Users</Text>
+          <Text>1,024</Text>
+        </View>
+        <View style={{ flex: 1, backgroundColor: '#f1f1f1', padding: 16, borderRadius: 12 }}>
+          <Text style={{ fontWeight: '600' }}>Sessions</Text>
+          <Text>8,910</Text>
+        </View>
+      </View>
+      {{/features.home.metricCards}}
+
+      {{#features.home.quickActions}}
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <GlobalButton title="New Order" />
+        <GlobalButton title="Invite" />
+      </View>
+      {{/features.home.quickActions}}
+
+      {{#features.home.recentActivityList}}
+      <View>
+        <Text style={{ fontWeight: '700', marginBottom: 8 }}>Recent Activity</Text>
+        <FlatList data={sampleActivities} keyExtractor={(x)=>x.id} renderItem={({item}) => (
+          <View style={{ paddingVertical: 8 }}>
+            <Text>{item.text}</Text>
+          </View>
+        )} />
+      </View>
+      {{/features.home.recentActivityList}}
+
+      {{#features.home.charts}}
+      <View style={{ height: 160, backgroundColor: '#eef5ff', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
+        <Text>Charts placeholder</Text>
+      </View>
+      {{/features.home.charts}}
+    </View>
+  );
+}

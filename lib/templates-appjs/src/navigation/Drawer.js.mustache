@@ -1,0 +1,14 @@
+import React from 'react';
+import { createDrawerNavigator } from '@react-navigation/drawer';
+
+const Drawer = createDrawerNavigator();
+
+export default function DrawerNav() {
+  return (
+    <Drawer.Navigator screenOptions={{ headerShown: false }}>
+      {{#drawerItems}}
+      <Drawer.Screen name="{{route}}" getComponent={() => require('../screens/{{name}}').default} />
+      {{/drawerItems}}
+    </Drawer.Navigator>
+  );
+}

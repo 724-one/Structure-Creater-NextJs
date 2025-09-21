@@ -1,0 +1,27 @@
+import React, { useState } from 'react';
+import { View, Text, Switch } from 'react-native';
+
+export default function Settings() {
+  const [dark, setDark] = useState(false);
+  const [push, setPush] = useState(true);
+
+  return (
+    <View style={{ flex: 1, padding: 20, gap: 16 }}>
+      <Text style={{ fontSize: 24, fontWeight: '700' }}>Settings</Text>
+
+      {{#features.settings.themeToggle}}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Switch value={dark} onValueChange={setDark} />
+        <Text>Dark Mode</Text>
+      </View>
+      {{/features.settings.themeToggle}}
+
+      {{#features.settings.pushToggle}}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Switch value={push} onValueChange={setPush} />
+        <Text>Push Notifications</Text>
+      </View>
+      {{/features.settings.pushToggle}}
+    </View>
+  );
+}

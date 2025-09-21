@@ -1,2 +1,7 @@
 /** @type {import('next').NextConfig} */
-module.exports = { turbopack: { root: __dirname } };
+const nextConfig = {
+  reactStrictMode: true,
+  // You can add supported experimental flags here if needed
+};
+
+module.exports = nextConfig;

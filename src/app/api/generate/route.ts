@@ -1,123 +1,120 @@
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-import os from "os";
-import Mustache from "mustache";
+// src/app/api/generate/route.ts
+import { NextResponse } from "next/server";
 import AdmZip from "adm-zip";
+import Mustache from "mustache";
+import path from "path";
+import fs from "fs";
+import type { AppBlueprint, GenerateRequest } from "../../../../lib/builder/schema";
+import { compileToLegacy } from "../../../../lib/builder/compile";
 
-type Features = {
-  enableLogin: boolean;
-  enableSignup: boolean;
-  phoneOnly: boolean;
-  socialLogins: boolean;
-  signupFields: Record<string, boolean>;
-};
-type Payload = {
-  appName: string;
-  packageManager: "yarn" | "pnpm" | "npm";
-  useLatest?: boolean;
-  expoSdk?: string;
-  rnVersion?: string;
-  appType?: string;
-  roles: string[];
-  features: Features;
-};
-
-const TPL_ROOT = path.join(process.cwd(), "lib", "templates-appjs");
-
-function toSafeName(name: string) {
-  const parts = name.toLowerCase().replace(/[^a-z0-9]+/g," ").trim().split(" ").filter(Boolean);
-  return parts.map(p=>p[0].toUpperCase()+p.slice(1)).join("") || "User";
-}
-function render(buildDir: string, templateRel: string, data: any) {
-  const tplPath = path.join(TPL_ROOT, templateRel);
-  if (!fs.existsSync(tplPath)) throw new Error("Template not found: " + templateRel);
-  const tpl = fs.readFileSync(tplPath, "utf8");
-  const outRel = templateRel.startsWith("app/") ? templateRel.slice(4) : templateRel;
-  const dest = path.join(buildDir, outRel.replace(/\.mustache$/, ""));
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  const out = Mustache.render(tpl, data);
-  fs.writeFileSync(dest, out, "utf8");
-}
-function renderAs(buildDir: string, templateRel: string, outRelPath: string, data: any) {
-  const tplPath = path.join(TPL_ROOT, templateRel);
-  if (!fs.existsSync(tplPath)) throw new Error("Template not found: " + templateRel);
-  const tpl = fs.readFileSync(tplPath, "utf8");
-  const dest = path.join(buildDir, outRelPath.replace(/\.mustache$/, ""));
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  const out = Mustache.render(tpl, data);
-  fs.writeFileSync(dest, out, "utf8");
+function tryLoad(relPaths: string[]) {
+  for (const rel of relPaths) {
+    const p = path.join(process.cwd(), rel);
+    if (fs.existsSync(p)) return fs.readFileSync(p, "utf-8");
+  }
+  throw new Error(`Template not found in any of: ${relPaths.join(", ")}`);
 }
 
-export async function GET() {
-  return NextResponse.json({ ok: true, templatesRoot: TPL_ROOT });
+function renderTemplateOrThrow(templateName: string, template: string, view: any) {
+  try { return Mustache.render(template, view); }
+  catch (e: any) {
+    const keys = view && typeof view === "object" ? Object.keys(view).join(", ") : String(view);
+    throw new Error(`Mustache render failed for "${templateName}". Error: ${e?.message || e}. View keys: [${keys}]`);
+  }
 }
 
-export async function POST(req: NextRequest) {
+function put(zip: AdmZip, filename: string, contents: string) {
+  zip.addFile(filename, Buffer.from(contents, "utf8"));
+}
+
+function withSafeDefaultsLegacy(req: GenerateRequest): GenerateRequest {
+  const safe = { ...req } as any;
+  const nav = {
+    hasBottomTabs: Boolean(safe.navigation?.hasBottomTabs),
+    tabs: Array.isArray(safe.navigation?.tabs) ? safe.navigation.tabs : [],
+    stack: Array.isArray(safe.navigation?.stack) ? safe.navigation.stack : [],
+    hasDrawer: Boolean(safe.navigation?.hasDrawer),
+    drawerItems: Array.isArray(safe.navigation?.drawerItems) ? safe.navigation.drawerItems : []
+  };
+  safe.navigation = nav;
+  safe.screens = Array.isArray(safe.screens) ? safe.screens : [];
+  return safe as GenerateRequest;
+}
+
+export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as Payload;
-    const buildDir = fs.mkdtempSync(path.join(os.tmpdir(), "rn-gen-"));
+    const incoming: any = await req.json();
 
-    const roles = (body.roles && body.roles.length ? body.roles : ["User"]).map(r => ({
-      displayName: r, safeName: toSafeName(r)
-    }));
-    const rolesJson = JSON.stringify(roles);
-    const featuresJson = JSON.stringify(body.features || {});
+    const legacy: GenerateRequest = incoming.meta
+      ? compileToLegacy(incoming as AppBlueprint)
+      : withSafeDefaultsLegacy(incoming as GenerateRequest);
 
-    // Root files
-    ["app/package.json.mustache","app/app.config.js.mustache","app/babel.config.js.mustache",
-     "app/App.js.mustache","app/.gitignore.mustache","app/README.md.mustache"
-    ].forEach(p => render(buildDir, p, body));
-
-    // Ensure assets folders exist
-    fs.mkdirSync(path.join(buildDir, "assets"), { recursive: true });
-    fs.mkdirSync(path.join(buildDir, "src/assets/images"), { recursive: true });
-
-    // Global components & utilities
-    render(buildDir, "src/components/GlobalButton.js.mustache", body);
-    render(buildDir, "src/components/GlobalTextInput.js.mustache", body);
-    render(buildDir, "src/styles/Theme.js.mustache", body);
-    render(buildDir, "src/utils/validators.js.mustache", body);
-
-    // RoleSelect screen if multiple roles
-    const initialRoute = roles.length > 1 ? "RoleSelect" : (body.features.enableLogin ? `${roles[0].safeName}Login` : `${roles[0].safeName}Signup`);
-    if (roles.length > 1) {
-      render(buildDir, "src/screens/RoleSelect.js.mustache", { rolesJson });
-    }
-
-    // Navigation aware of roles
-    render(buildDir, "src/navigation/RootNavigator.js.mustache", {
-      features: body.features,
-      roles,
-      initialRoute,
-      "roles.length_gt_1": roles.length > 1
-    });
-
-    // Per-role auth screens
-    for (const role of roles) {
-      const ctx = { role, features: body.features, featuresJson };
-      if (body.features.enableLogin) {
-        renderAs(buildDir, "src/screens/auth/LoginScreen.tpl.mustache", `src/screens/${role.safeName}/Auth/LoginScreen.js`, ctx);
-      }
-      if (body.features.enableSignup) {
-        renderAs(buildDir, "src/screens/auth/SignupScreen.tpl.mustache", `src/screens/${role.safeName}/Auth/SignupScreen.js`, ctx);
-      }
-    }
-
-    // Zip
     const zip = new AdmZip();
-    zip.addLocalFolder(buildDir);
-    return new NextResponse(zip.toBuffer(), {
-      headers: {
-        "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="${body.appName || "App"}-rn.zip"`,
-        "Cache-Control": "no-store"
-      }
-    });
-  } catch (e: any) {
-    return new NextResponse("Generator error: " + (e?.stack || e), { status: 500 });
+
+    const authScreens = (legacy.screens || [])
+      .filter((s) => s.type === "auth")
+      .map((s) => ({ name: s.name, route: s.name }));
+
+    const navView = { ...legacy.navigation, authScreens };
+
+    const appConfigTpl = tryLoad([
+      "lib/templates-appjs/app.config.js.mustache",
+      "lib/templates-appjs/app/app.config.js.mustache",
+    ]);
+    put(zip, "app.config.js", renderTemplateOrThrow("app.config.js.mustache", appConfigTpl, {
+      appName: legacy.appName,
+      slug: legacy.slug,
+      owner: legacy.owner,
+      useLatestExpo: legacy.useLatestExpo,
+    }));
+
+    const pkgTpl = tryLoad(["lib/templates-appjs/package.json.mustache"]);
+    put(zip, "package.json", renderTemplateOrThrow("package.json.mustache", pkgTpl, {
+      slug: legacy.slug,
+      appName: legacy.appName,
+    }));
+
+    const appTpl = tryLoad(["lib/templates-appjs/App.js.mustache"]);
+    put(zip, "App.js", renderTemplateOrThrow("App.js.mustache", appTpl, { appName: legacy.appName }));
+
+    const rootNavTpl = tryLoad(["lib/templates-appjs/src/navigation/RootNavigator.js.mustache"]);
+    put(zip, "src/navigation/RootNavigator.js", renderTemplateOrThrow("RootNavigator.js.mustache", rootNavTpl, navView));
+
+    if (legacy.navigation.hasBottomTabs) {
+      const bottomTabsTpl = tryLoad([
+        "lib/templates-appjs/src/navigation/BottomTabs.js.mustache",
+        "lib/builder/templates-appjs/src/navigation/BottomTabs.js.mustache"
+      ]);
+      put(zip, "src/navigation/BottomTabs.js", renderTemplateOrThrow("BottomTabs.js.mustache", bottomTabsTpl, navView));
+    }
+
+    if (legacy.navigation.hasDrawer) {
+      const drawerTpl = tryLoad([
+        "lib/templates-appjs/src/navigation/Drawer.js.mustache",
+        "lib/builder/templates-appjs/src/navigation/Drawer.js.mustache"
+      ]);
+      put(zip, "src/navigation/Drawer.js", renderTemplateOrThrow("Drawer.js.mustache", drawerTpl, navView));
+    }
+
+    const btnTpl = tryLoad(["lib/templates-appjs/src/components/GlobalButton.js.mustache"]);
+    put(zip, "src/components/GlobalButton.js", renderTemplateOrThrow("GlobalButton.js.mustache", btnTpl, {}));
+
+    const inputTpl = tryLoad(["lib/templates-appjs/src/components/GlobalTextInput.js.mustache"]);
+    put(zip, "src/components/GlobalTextInput.js", renderTemplateOrThrow("GlobalTextInput.js.mustache", inputTpl, {}));
+
+    for (const screen of legacy.screens) {
+      const tpl = tryLoad([`lib/templates-appjs/src/screens/${screen.template}.mustache`]);
+      const out = screen.type === "auth" ? `src/screens/Auth/${screen.name}.js` : `src/screens/${screen.name}.js`;
+      put(zip, out, renderTemplateOrThrow(`${screen.template}.mustache`, tpl, screen.props || {}));
+    }
+
+    const data = zip.toBuffer();
+    return new NextResponse(data, { status: 200, headers: {
+      "Content-Type": "application/zip",
+      "Content-Disposition": "attachment; filename=generated-app.zip",
+    }});
+  } catch (err: any) {
+    console.error(err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

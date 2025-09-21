@@ -1,0 +1,52 @@
+import React, { useState } from 'react';
+import { View, Text, Alert, Switch } from 'react-native';
+import GlobalTextInput from '../components/GlobalTextInput';
+import GlobalButton from '../components/GlobalButton';
+
+export default function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(false);
+
+  return (
+    <View style={{ flex: 1, padding: 20, justifyContent: 'center', gap: 14 }}>
+      <Text style={{ fontSize: 28, fontWeight: '700', marginBottom: 8 }}>Login</Text>
+
+      {{#features.auth.emailPassword}}
+      <GlobalTextInput placeholder="Email" value={email} onChangeText={setEmail} autoCapitalize="none" />
+      <GlobalTextInput placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
+      {{/features.auth.emailPassword}}
+
+      {{#features.auth.rememberMe}}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Switch value={remember} onValueChange={setRemember} />
+        <Text>Remember me</Text>
+      </View>
+      {{/features.auth.rememberMe}}
+
+      {{#features.auth.google}}
+      <GlobalButton title="Continue with Google" onPress={() => Alert.alert('Google Login')} />
+      {{/features.auth.google}}
+
+      {{#features.auth.apple}}
+      <GlobalButton title="Continue with Apple" onPress={() => Alert.alert('Apple Login')} />
+      {{/features.auth.apple}}
+
+      {{#features.auth.phoneOtp}}
+      <GlobalButton title="Login with Phone (OTP)" onPress={() => Alert.alert('Phone OTP')} />
+      {{/features.auth.phoneOtp}}
+
+      {{#features.auth.magicLink}}
+      <GlobalButton title="Send Magic Link" onPress={() => Alert.alert('Magic Link sent')} />
+      {{/features.auth.magicLink}}
+
+      {{#features.auth.emailPassword}}
+      <GlobalButton title="Login" onPress={() => Alert.alert('Login', email)} />
+      {{/features.auth.emailPassword}}
+
+      {{#features.auth.forgotPassword}}
+      <Text style={{ color: '#3366ee', marginTop: 8 }} onPress={() => Alert.alert('Reset Password')}>Forgot password?</Text>
+      {{/features.auth.forgotPassword}}
+    </View>
+  );
+}

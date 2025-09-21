@@ -1,42 +1,27 @@
-{{=<% %>=}}
-import React from "react";
-import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-<%#roles.length_gt_1%>import RoleSelect from "../screens/RoleSelect";<%/roles.length_gt_1%>
-<%#roles%>
-import <%safeName%>Login from "../screens/<%safeName%>/Auth/LoginScreen";
-<%#features.enableSignup%>import <%safeName%>Signup from "../screens/<%safeName%>/Auth/SignupScreen";<%/features.enableSignup%>
-<%/roles%>
+import React from 'react';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+{{#hasBottomTabs}}import BottomTabs from './BottomTabs';{{/hasBottomTabs}}
+{{#hasDrawer}}import DrawerNav from './Drawer';{{/hasDrawer}}
 
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{ headerShown: false }}
-        initialRouteName="<%initialRoute%>"
-      >
-        <%#roles.length_gt_1%>
-        <Stack.Screen name="RoleSelect" component={RoleSelect} />
-        <%/roles.length_gt_1%>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {{#hasDrawer}}
+      <Stack.Screen name="MainDrawer" component={DrawerNav} />
+      {{/hasDrawer}}
+      {{#hasBottomTabs}}
+      <Stack.Screen name="MainTabs" component={BottomTabs} />
+      {{/hasBottomTabs}}
 
-        <%#roles%>
-          <%#features.enableLogin%>
-          <Stack.Screen
-            name="<%safeName%>Login"
-            component={<%safeName%>Login}
-          />
-          <%/features.enableLogin%>
+      {{#stack}}
+      <Stack.Screen name="{{route}}" getComponent={() => require('../screens/{{name}}').default} />
+      {{/stack}}
 
-          <%#features.enableSignup%>
-          <Stack.Screen
-            name="<%safeName%>Signup"
-            component={<%safeName%>Signup}
-          />
-          <%/features.enableSignup%>
-        <%/roles%>
-      </Stack.Navigator>
-    </NavigationContainer>
+      {{#authScreens}}
+      <Stack.Screen name="{{route}}" getComponent={() => require('../screens/Auth/{{name}}').default} />
+      {{/authScreens}}
+    </Stack.Navigator>
   );
 }

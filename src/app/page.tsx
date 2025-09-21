@@ -1,130 +1,208 @@
+// src/app/page.tsx
 "use client";
 import { useMemo, useState } from "react";
+import type { AppBlueprint, ScreenKind, ScreenSpecV2 } from "../../lib/builder/schema";
+import { FeatureRegistry } from "../../lib/builder/feature-registry";
 
-const APP_TYPES = [
-  "Fintech Apps","Trading Apps","Social Media Apps","E-commerce Apps","EdTech Apps","HealthTech Apps",
-  "Food & Delivery Apps","Travel & Hospitality Apps","Gaming Apps","Entertainment Apps","Productivity Apps",
-  "Utility Apps","Real Estate Apps","Logistics & Transport Apps","GovTech / Civic Apps","Enterprise Apps"
+const CATEGORIES = [
+  "Fintech","Trading","Social","E-commerce","EdTech","HealthTech",
+  "Food & Delivery","Travel","Gaming","Entertainment","Productivity","Utility",
+] as const;
+
+type Category = typeof CATEGORIES[number];
+
+const DEFAULT_SCREENS: Array<{ id: string; kind: ScreenKind; name: string; template: string }> = [
+  { id: "Login", kind: "auth", name: "Login", template: "Login" },
+  { id: "Signup", kind: "auth", name: "Signup", template: "Signup" },
+  { id: "Home", kind: "home", name: "Home", template: "Home" },
+  { id: "Settings", kind: "settings", name: "Settings", template: "Settings" },
 ];
 
-export default function Home() {
-  const [appName, setAppName] = useState("MyGeneratedApp");
-  const [pkgMgr, setPkgMgr] = useState<"yarn"|"pnpm"|"npm">("yarn");
-  const [useLatest, setUseLatest] = useState(true);
-  const [appType, setAppType] = useState(APP_TYPES[0]);
+export default function Generator() {
+  const [appName, setAppName] = useState("DemoApp");
+  const [slug, setSlug] = useState("demo-app");
+  const [owner, setOwner] = useState("yasir");
+  const [category, setCategory] = useState<Category>("Productivity");
+  const [useLatestExpo, setUseLatestExpo] = useState(true);
 
-  // Roles (comma-separated)
-  const [rolesInput, setRolesInput] = useState("User");
-  const roles = useMemo(() =>
-    rolesInput.split(",").map(r => r.trim()).filter(Boolean), [rolesInput]);
+  const [navMode, setNavMode] = useState<"stack"|"tabs"|"drawer">("tabs");
+  const [selected, setSelected] = useState<Record<string, boolean>>({ Login: true, Signup: true, Home: true, Settings: true });
+  const [features, setFeatures] = useState<Record<string, any>>({});
 
-  // Auth toggles
-  const [enableLogin, setEnableLogin] = useState(true);
-  const [enableSignup, setEnableSignup] = useState(true);
-  const [phoneOnly, setPhoneOnly] = useState(false);
-  const [socialLogins, setSocialLogins] = useState(false); // Google/Apple buttons
+  const selectedScreens: ScreenSpecV2[] = useMemo(() => {
+    return DEFAULT_SCREENS.filter(s => selected[s.id]).map(s => ({ ...s, features: features[s.id] || {} }));
+  }, [selected, features]);
 
-  // Signup fields
-  const [sf, setSf] = useState({
-    firstName: true, lastName: true, email: true, password: true,
-    confirmPassword: true, phone: false, dob: false
-  });
-  const toggleField = (k: keyof typeof sf) => setSf(s => ({...s, [k]: !s[k]}));
+  function setFeature(screenId: string, dottedKey: string, value: any) {
+    setFeatures(prev => {
+      const next = { ...(prev[screenId] || {}) } as any;
+      const parts = dottedKey.split("."); // e.g., auth.google
+      let obj = next;
+      for (let i = 0; i < parts.length - 1; i++) {
+        const k = parts[i];
+        obj[k] = obj[k] || {};
+        obj = obj[k];
+      }
+      obj[parts[parts.length - 1]] = value;
+      return { ...prev, [screenId]: next };
+    });
+  }
 
-  const generate = async () => {
-    const payload = {
-      appName, packageManager: pkgMgr, useLatest,
-      expoSdk: "53.0.0", rnVersion: "0.79.0",
-      appType,
-      roles,
-      features: { enableLogin, enableSignup, phoneOnly, socialLogins, signupFields: sf }
+  async function generate() {
+    const structure: any = navMode === "tabs" ? {
+      type: "tabs",
+      id: "ROOT_TABS",
+      children: [
+        ...(selected["Home"] ? [{ tabId: "home", title: "Home", child: { type: "screen", screenId: "Home" } }] : []),
+        ...(selected["Settings"] ? [{ tabId: "settings", title: "Settings", child: { type: "screen", screenId: "Settings" } }] : []),
+      ]
+    } : navMode === "drawer" ? {
+      type: "drawer",
+      id: "ROOT_DRAWER",
+      children: [
+        ...(selected["Home"] ? [{ itemId: "home", title: "Home", child: { type: "screen", screenId: "Home" } }] : []),
+        ...(selected["Settings"] ? [{ itemId: "settings", title: "Settings", child: { type: "screen", screenId: "Settings" } }] : []),
+      ]
+    } : {
+      type: "stack",
+      id: "ROOT_STACK",
+      children: [
+        ...(selected["Home"] ? [{ type: "screen", screenId: "Home" }] : []),
+        ...(selected["Settings"] ? [{ type: "screen", screenId: "Settings" }] : []),
+      ]
     };
 
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = `${appName}-rn.zip`; a.click();
-      URL.revokeObjectURL(url);
-    } catch (e: any) {
-      alert("Generate failed: " + (e?.message ?? e));
-    }
-  };
+    const blueprint: AppBlueprint = {
+      meta: { appName, slug, owner, category, useLatestExpo },
+      navigation: { root: navMode, structure },
+      screens: selectedScreens,
+      integrations: { authProvider: "none", database: "none", storage: "none", analytics: "expo", push: "expo" }
+    };
+
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(blueprint),
+    });
+    if (!res.ok) { const j = await res.json().catch(() => ({})); alert(j.error || `HTTP ${res.status}`); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "generated-app.zip"; a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
-    <main style={{ maxWidth: 900, margin: "32px auto", padding: 16 }}>
-      <h1>Structure-Creater-NextJs</h1>
+    <main className="max-w-5xl mx-auto p-6 space-y-6">
+      <h1 className="text-2xl font-bold">Structure-Creater-NextJs</h1>
 
-      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "1fr 1fr" }}>
-        <div>
-          <label>App Name</label>
-          <input value={appName} onChange={e=>setAppName(e.target.value)}
-                 style={{ display:"block", width:"100%", padding:10, marginTop:6 }} />
-        </div>
-
-        <div>
-          <label>Package Manager</label><br/>
-          <select value={pkgMgr} onChange={e=>setPkgMgr(e.target.value as any)} style={{ padding:10, marginTop:6 }}>
-            <option value="yarn">yarn</option><option value="pnpm">pnpm</option><option value="npm">npm</option>
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <label className="space-y-1">
+          <div className="text-sm font-medium">App Name</div>
+          <input className="border rounded px-3 py-2 w-full" value={appName} onChange={(e)=>setAppName(e.target.value)} />
+        </label>
+        <label className="space-y-1">
+          <div className="text-sm font-medium">Slug</div>
+          <input className="border rounded px-3 py-2 w-full" value={slug} onChange={(e)=>setSlug(e.target.value)} />
+        </label>
+        <label className="space-y-1">
+          <div className="text-sm font-medium">Owner</div>
+          <input className="border rounded px-3 py-2 w-full" value={owner} onChange={(e)=>setOwner(e.target.value)} />
+        </label>
+        <label className="space-y-1">
+          <div className="text-sm font-medium">Category</div>
+          <select className="border rounded px-3 py-2 w-full" value={category} onChange={(e)=>setCategory(e.target.value as Category)}>
+            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-        </div>
-
-        <div>
-          <label>Type of App</label><br/>
-          <select value={appType} onChange={e=>setAppType(e.target.value)} style={{ padding:10, marginTop:6, width:"100%" }}>
-            {APP_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+        </label>
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={useLatestExpo} onChange={(e)=>setUseLatestExpo(e.target.checked)} /> Use latest Expo
+        </label>
+        <label className="space-y-1">
+          <div className="text-sm font-medium">Navigation Mode</div>
+          <select className="border rounded px-3 py-2 w-full" value={navMode} onChange={(e)=>setNavMode(e.target.value as any)}>
+            <option value="stack">Stack</option>
+            <option value="tabs">Tabs</option>
+            <option value="drawer">Drawer</option>
           </select>
-        </div>
+        </label>
+      </section>
 
-        <div>
-          <label>Use latest RN/Expo?</label>
-          <div><input type="checkbox" checked={useLatest} onChange={e=>setUseLatest(e.target.checked)} /> Latest</div>
-        </div>
-
-        <div style={{ gridColumn: "1 / -1" }}>
-          <label>How many types of users?</label>
-          <div style={{ fontSize:12, opacity:.8, marginTop:4 }}>Enter comma-separated roles. Example: <code>Customer, Admin, Driver</code></div>
-          <input value={rolesInput} onChange={e=>setRolesInput(e.target.value)}
-                 style={{ display:"block", width:"100%", padding:10, marginTop:6 }} />
-        </div>
-      </div>
-
-      <hr style={{ margin:"24px 0", opacity:.3 }} />
-
-      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "1fr 1fr 1fr" }}>
-        <div>
-          <h3>Login</h3>
-          <div><input type="checkbox" checked={enableLogin} onChange={e=>setEnableLogin(e.target.checked)} /> Enable Login</div>
-          <div><input type="checkbox" checked={phoneOnly} onChange={e=>setPhoneOnly(e.target.checked)} /> Phone number only</div>
-          <div><input type="checkbox" checked={socialLogins} onChange={e=>setSocialLogins(e.target.checked)} /> Google &amp; Apple buttons</div>
-        </div>
-
-        <div>
-          <h3>Signup</h3>
-          <div><input type="checkbox" checked={enableSignup} onChange={e=>setEnableSignup(e.target.checked)} /> Enable Signup</div>
-          <div style={{ marginTop:8, fontWeight:600 }}>Fields</div>
-          {Object.keys(sf).map(k => (
-            <div key={k}><input type="checkbox" checked={(sf as any)[k]} onChange={()=>toggleField(k as any)} /> {k}</div>
+      <section className="p-4 border rounded">
+        <div className="font-semibold mb-3">Screens</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {DEFAULT_SCREENS.map(s => (
+            <label key={s.id} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={!!selected[s.id]}
+                onChange={(e)=>setSelected(v=>({ ...v, [s.id]: e.target.checked }))}
+              />
+              {s.name}
+            </label>
           ))}
         </div>
+      </section>
 
-        <div>
-          <h3>Notes</h3>
-          <div style={{ fontSize:12, opacity:.8 }}>
-            • If multiple roles, a Role Select screen appears first.<br/>
-            • Phone-only login is UI-only (no OTP backend).<br/>
-            • Google/Apple buttons are UI stubs you can wire later.
+      {selectedScreens.map(screen => (
+        <section key={screen.id} className="p-4 border rounded">
+          <div className="font-semibold mb-2">{screen.name} features</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {(FeatureRegistry[screen.kind] || []).map(opt => {
+              const [group, key] = opt.key.split(".");
+              const current = (((features[screen.id]||{}) as any)[group] || {})[key];
+              return (
+                <div key={opt.key} className="flex items-center gap-2">
+                  {opt.control === "checkbox" && (
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(current ?? opt.default)}
+                        onChange={(e)=> setFeature(screen.id, opt.key, e.target.checked)}
+                      />
+                      {opt.label}
+                    </label>
+                  )}
+                  {opt.control === "select" && (
+                    <label className="flex items-center gap-2">
+                      <span className="min-w-40">{opt.label}</span>
+                      <select className="border rounded px-2 py-1"
+                        defaultValue={(opt as any).default as any}
+                        onChange={(e)=> setFeature(screen.id, opt.key, e.target.value)}>
+                        {(opt as any).options.map((o:string)=>(<option key={o} value={o}>{o}</option>))}
+                      </select>
+                    </label>
+                  )}
+                  {opt.control === "multi" && (
+                    <div>
+                      <div className="text-sm">{opt.label}</div>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {(opt as any).options.map((o:string)=>{
+                          const cur = current || opt.default || [];
+                          const checked = cur.includes(o);
+                          return (
+                            <label key={o} className="flex items-center gap-1 border rounded px-2 py-1">
+                              <input type="checkbox" checked={checked}
+                                onChange={(e)=> {
+                                  const next = new Set(cur);
+                                  if (e.target.checked) next.add(o); else next.delete(o);
+                                  setFeature(screen.id, opt.key, Array.from(next));
+                                }} />
+                              {o}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </div>
-      </div>
+        </section>
+      ))}
 
-      <button onClick={generate} style={{ marginTop: 24, padding:"10px 16px" }}>Generate ZIP</button>
+      <button onClick={generate} className="px-4 py-2 rounded bg-black text-white">Generate ZIP</button>
     </main>
   );
 }

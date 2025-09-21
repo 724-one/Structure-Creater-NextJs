@@ -1,0 +1,14 @@
+import React from 'react';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+
+const Tab = createBottomTabNavigator();
+
+export default function BottomTabs() {
+  return (
+    <Tab.Navigator screenOptions={{ headerShown: false }}>
+      {{#tabs}}
+      <Tab.Screen name="{{route}}" getComponent={() => require('../screens/{{name}}').default} />
+      {{/tabs}}
+    </Tab.Navigator>
+  );
+}
